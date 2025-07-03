@@ -53,7 +53,7 @@ def project1():
             <li>Achieved good metrics on the segmentation task. MIoU > 75%</li>
             <li>Implemented a streamlit interface for visualizing predictions</li>
         </ul>
-        <img src="/static/VIA in use.png" class="img-fluid" alt="VIA in use" style="max-width: 100%;">
+        <img src="/static/VIA_in_use.png" class="img-fluid" alt="VIA in use" style="max-width: 100%;">
         <p class="text-center"><small>VIA IN USE</small></p>
         """,
         active_page='Project 1')
@@ -92,9 +92,9 @@ def project2():
         <p>A SAMPLE OF THE REPORT AND STREAMLIT INTERFACES ARE SHOWN BELOW. Further enquiry can be checked in the <a href="https://docs.google.com/document/d/1roWh0Jl_VcngLd_OmuGMlIP2hdXSJRbf/edit?usp=drivesdk&ouid=109569805470530100719&rtpof=true&sd=true">report [gdrive link]</a> or by contacting me</p>
         <h4 class="text-center">Project main report</h4>
         {table_html}
-        <img src="/static/project2 sample interface.png" class="img-fluid" alt="Project 2 interface">
+        <img src="/static/project2_sample_interface.png" class="img-fluid" alt="Project 2 interface">
         <h4 class="text-center">Sample predictions from the models</h4>
-        <img src="/static/project2 outputs.png" class="img-fluid" alt="Project 2 outputs">
+        <img src="/static/project2_outputs.png" class="img-fluid" alt="Project 2 outputs">
         """,
         active_page='Project 2')
 
@@ -126,11 +126,11 @@ def project3():
             <li>TRAINED EFFICIENTNET MODELS</li>
         </ul>
         <h4 class="text-center">Project Visualizations</h4>
-        <img src="/static/project3 data collection.png" class="img-fluid" alt="Data Acquisition">
+        <img src="/static/project3_data_collection.png" class="img-fluid" alt="Data Acquisition">
         <p class="text-center"><small>DATA ACQUISITION</small></p>
-        <img src="/static/project3 dpabi proessing.png" class="img-fluid" alt="DPABI Processing">
+        <img src="/static/project3_dpabi_proessing.png" class="img-fluid" alt="DPABI Processing">
         <p class="text-center"><small>DPABI PROCESSING</small></p>
-        <img src="/static/project3 processed images.png" class="img-fluid" alt="Processed Images">
+        <img src="/static/project3_processed_images.png" class="img-fluid" alt="Processed Images">
         <p class="text-center"><small>PROCESSED IMAGES</small></p>
         """,
         active_page='Project 3')
@@ -170,15 +170,15 @@ def project4():
         <h4 class="text-center">Project main report</h4>
         {table_html}
         <h4 class="text-center">Sample predictions from the models</h4>
-        <img src="/static/project4 outputs.png" class="img-fluid" alt="Project 4 outputs">
+        <img src="/static/project4_outputs.png" class="img-fluid" alt="Project 4 outputs">
         <h4 class="text-center">Model visualization</h4>
         <div class="row">
             <div class="col-md-6">
-                <img src="/static/project4 novel outlook.jpg" class="img-fluid" alt="Model outlook">
+                <img src="/static/project4_novel_outlook.jpg" class="img-fluid" alt="Model outlook">
                 <p class="text-center"><small>model outlook</small></p>
             </div>
             <div class="col-md-6">
-                <img src="/static/project4 NOVEL MODEL ARCHITECTURE.png" class="img-fluid" alt="Model architecture">
+                <img src="/static/project4_NOVEL_MODEL_ARCHITECTURE.png" class="img-fluid" alt="Model architecture">
                 <p class="text-center"><small>model arch</small></p>
             </div>
         </div>
@@ -231,15 +231,15 @@ def project5():
         <p>A SAMPLE OF THE REPORT AND OTHER MODEL VISUALIZATIONS ARE SHOWN BELOW. Further enquiry can be checked in the <a href="https://docs.google.com/document/d/1X0QJ3VesoOagpyS5ptqLvy3sjBW9Tb18/edit?usp=drivesdk&ouid=103980037459622424907&rtpof=true&sd=true">report [gdrive link]</a> or by contacting me</p>
         <h4 class="text-center">Project main report</h4>
         {table_html}
-        <img src="/static/project5 sample interface.png" class="img-fluid" alt="Project 5 interface">
+        <img src="/static/project5_sample_interface.png" class="img-fluid" alt="Project 5 interface">
         <h4 class="text-center">Model visualization</h4>
         <div class="row">
             <div class="col-md-6">
-                <img src="/static/project5 large.png" class="img-fluid" alt="Model large">
+                <img src="/static/project5_large.png" class="img-fluid" alt="Model large">
                 <p class="text-center"><small>model large</small></p>
             </div>
             <div class="col-md-6">
-                <img src="/static/project5 small.png" class="img-fluid" alt="Model small">
+                <img src="/static/project5_small.png" class="img-fluid" alt="Model small">
                 <p class="text-center"><small>model small</small></p>
             </div>
         </div>
