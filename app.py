@@ -1,276 +1,251 @@
-from flask import Flask, render_template, request
+from flask import Flask, render_template, request, redirect, url_for, abort, session, flash
 import pandas as pd
+import json
 import os
+import re
+import markdown
+from functools import wraps
 
 app = Flask(__name__)
 
-# Helper function to read Excel files
-def load_excel_data(filename):
+# --- Flask Secret Key Configuration ---
+# IMPORTANT: In a real environment, this should be a long, random value 
+# and stored securely, not hardcoded. This is for demonstration only.
+app.config['SECRET_KEY'] = 'your_super_secret_key_for_sessions_12345'
+app.config['SESSION_COOKIE_SECURE'] = True  # Recommend using HTTPS in production
+app.config['SESSION_COOKIE_HTTPONLY'] = True
+
+# --- Hardcoded Admin Credentials (For single-user CMS) ---
+ADMIN_USERNAME = 'admin'
+ADMIN_PASSWORD = 'password123' 
+
+# --- Authentication Decorator ---
+def login_required(f):
+    """Decorator to ensure user is logged in before accessing a route."""
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if 'logged_in' not in session or not session['logged_in']:
+            flash("You must be logged in to access the admin panel.", "danger")
+            return redirect(url_for('login'))
+        return f(*args, **kwargs)
+    return decorated_function
+
+# --- Configuration and Data Management ---
+DATA_FILE = 'portfolio_data.json'
+EXCEL_DIR = '.' # Excel files are in the same directory as app.py
+
+def load_portfolio_data():
+    """Loads all portfolio content from the JSON file."""
     try:
-        df = pd.read_excel(filename)
-        return df.to_html(classes='table table-striped', index=False)
-    except:
-        return "<p>Error loading table data</p>"
+        with open(DATA_FILE, 'r') as f:
+            data = json.load(f)
+            if 'projects' not in data:
+                 data['projects'] = {}
+            return data
+    except (FileNotFoundError, json.JSONDecodeError):
+        print(f"Warning: {DATA_FILE} not found or invalid. Initializing empty structure.")
+        return {'portfolio_title': 'Dynamic ML Portfolio', 'projects': {'home': {'title': 'Home', 'content': 'Welcome to my dynamic portfolio. Start editing on the /admin page!', 'table_filename': ''}}}
+
+def save_portfolio_data(data):
+    """Saves the current portfolio data to the JSON file."""
+    try:
+        with open(DATA_FILE, 'w') as f:
+            json.dump(data, f, indent=4)
+    except IOError as e:
+        print(f"Error saving data to {DATA_FILE}: {e}")
+
+def load_excel_data(filename):
+    """Converts an Excel file into a Bootstrap-styled HTML table string."""
+    if not filename:
+        return ""
+    filepath = os.path.join(EXCEL_DIR, filename)
+    if not os.path.exists(filepath):
+        return f"<div class='alert alert-warning my-3' role='alert'><strong>Table Error:</strong> File '{filename}' not found at {filepath}</div>"
+    try:
+        df = pd.read_excel(filepath)
+        return df.to_html(classes='table table-bordered table-striped table-hover content-table', index=False)
+    except Exception as e:
+        return f"<div class='alert alert-danger my-3' role='alert'><strong>Table Error:</strong> Could not load data from '{filename}'. Details: {e}</div>"
+
+def generate_slug(title, existing_slugs):
+    """Generates a URL-friendly slug, ensuring uniqueness."""
+    base_slug = title.lower().replace(' ', '-').replace('/', '-').strip()
+    base_slug = re.sub(r'[^\w\-]', '', base_slug)
+    slug = base_slug
+    i = 1
+    # Note: existing_slugs is the entire data dictionary, so we check the 'projects' key
+    while slug in existing_slugs.get('projects', {}):
+        slug = f"{base_slug}-{i}"
+        i += 1
+    return slug if slug else f"new-project-{len(existing_slugs.get('projects', {})) + 1}"
+
+def render_dynamic_project(slug):
+    """Centralized function to fetch data, convert content, and render the project page."""
+    data = load_portfolio_data()
+    project = data['projects'].get(slug)
+
+    if not project:
+        abort(404)
+    
+    content_markdown = project.get('content', '') # Use .get for safety
+    
+    # 1. Replace [TABLE:filename] placeholders with HTML table
+    def replace_table_placeholder(match):
+        filename = match.group(1).strip()
+        return load_excel_data(filename)
+
+    content_markdown_with_tables = re.sub(r'\[TABLE:(.*?)\]', replace_table_placeholder, content_markdown)
+
+    # 2. Convert Markdown to HTML
+    content_html = markdown.markdown(content_markdown_with_tables, extensions=['extra'])
+    
+    # 3. Apply Bootstrap classes to images rendered by Markdown
+    content_html = content_html.replace('<img src', '<img class="img-fluid rounded shadow-sm my-4" src')
+    
+    return render_template('index.html',
+        portfolio_title=data.get('portfolio_title', "Dynamic ML Portfolio"),
+        content=content_html,
+        active_page_slug=slug,
+        projects=data['projects'])
+
+# --- Authentication Routes ---
+
+@app.route('/login', methods=['GET', 'POST'])
+def login():
+    """Handles admin login."""
+    if request.method == 'POST':
+        username = request.form.get('username')
+        password = request.form.get('password')
+        
+        # Simple hardcoded credential check
+        if username == ADMIN_USERNAME and password == ADMIN_PASSWORD:
+            session['logged_in'] = True
+            flash("Logged in successfully!", "success")
+            # Redirect to the admin panel after successful login
+            return redirect(url_for('admin_redirect'))
+        else:
+            flash("Invalid credentials. Please try again.", "danger")
+
+    # If GET request or failed POST, show the login form
+    return render_template('login.html', portfolio_title=load_portfolio_data().get('portfolio_title', "Dynamic ML Portfolio"))
+
+@app.route('/logout')
+def logout():
+    """Handles admin logout."""
+    session.pop('logged_in', None)
+    flash("You have been logged out.", "info")
+    return redirect(url_for('home'))
+
+# --- Public Project Routes (Dynamic) ---
 
 @app.route('/')
 def home():
-    return render_template('index.html', 
-        page_title="ABDULSALAM BASIT ML PORTFOLIO",
-        content="""
-        <p>My public ML portfolio.<br>
-        This portfolio contains description of some selected projects majorly computer vision projects on different areas including classification and segmentation.</p>
-        <p>Contact<br>
-        Email: <a href="mailto:basitsalam2001@gmail.com">basitsalam2001@gmail.com</a><br>
-        Phone: <a href="tel:+2347050837042">+2347050837042</a></p>
-        <p>A copy of my CV can be accessed at <a href="https://docs.google.com/document/d/1abzvZSsUPLYUKVUf_qC6vZPpm_ByAZr3/edit?usp=sharing&ouid=109569805470530100719&rtpof=true&sd=true">CV [gdrive link]</a></p>
-        <img src="/static/how-to-build-a-machine-learning-portfolio.jpeg" class="img-fluid" alt="Portfolio Image">
-        """,
-        active_page='Home')
+    """Renders the Home project."""
+    return render_dynamic_project('home')
 
-@app.route('/project1')
-def project1():
-    return render_template('index.html', 
-        page_title="ABDULSALAM BASIT ML PORTFOLIO",
-        content="""
-        <h2 class="text-center">UNet Optimized With Differential Evolution</h2>
-        <p>The key goal of the project was to optimize a UNet segmentation model such that we can have a small model size which will still perform as excellent as any other SoTA segmentation models.<br>
-        The models compared with were SEGNET, PSPNET, and FCN.<br>
-        The model achieved a weights size of about 5mb in contrast to others that are in the range of tens and hundreds mb.<br>
-        The training data used was potato leaves downloaded from plant village which included Healthy, Early Blight and Late blight. Training was done using just early blight but models were evaluated on all 3 classes. Annotations were done manually.</p>
-        <h4>Tools Used:</h4>
-        <ol>
-            <li>VGG IMAGE ANNOTATOR</li>
-            <li>TENSORFLOW</li>
-            <li>PYTHON</li>
-            <li>NUMPY</li>
-            <li>STREAMLIT</li>
-            <li>OpenCV etc</li>
-        </ol>
-        <h4>Project Highlight:</h4>
-        <ul>
-            <li>Performed data engineering.</li>
-            <li>Optimized a UNet to have small parameters and low model size.</li>
-            <li>Achieved good metrics on the segmentation task. MIoU > 75%</li>
-            <li>Implemented a streamlit interface for visualizing predictions</li>
-        </ul>
-        <img src="/static/VIA_in_use.png" class="img-fluid" alt="VIA in use" style="max-width: 100%;">
-        <p class="text-center"><small>VIA IN USE</small></p>
-        """,
-        active_page='Project 1')
+@app.route('/project/<slug>')
+def dynamic_project_route(slug):
+    """Renders any project page based on its unique slug."""
+    return render_dynamic_project(slug)
 
-@app.route('/project2')
-def project2():
-    table_html = load_excel_data('project2 sample table.xlsx')
-    return render_template('index.html', 
-        page_title="ABDULSALAM BASIT ML PORTFOLIO",
-        content=f"""
-        <h2 class="text-center">UNet with Pretrained Encoders and Optimized With Differential Evolution</h2>
-        <p>The key objectives of the project was to optimize a number of UNet segmentation architectures with pretrained encoders like VGG19 and so on with differential evolution.<br>
-        In the project, some layers of the encoder of a standard Unet architecture were replaced with pretrained weights from different models.<br>
-        Next step was to optimize the layers of the decoder using differential evolution and record the values.<br>
-        The training data used for the project include leaves of maize, cassava, yam etc.<br>
-        In comparing the models, each model is trained 6 times. A training involve training on 4 crops and evaluating on the 5th crop. The 6th training is done by combining all the crops and splitting<br>
-        In the end, VGG19 model optimized at decoder layer 4 proved to be the best model on the task.</p>
-        <h4>Tools Used:</h4>
-        <ol>
-            <li>VGG IMAGE ANNOTATOR</li>
-            <li>Adobe photoshop (for removing unwanted noises in the images used)</li>
-            <li>TENSORFLOW</li>
-            <li>PYTHON</li>
-            <li>NUMPY</li>
-            <li>STREAMLIT</li>
-            <li>OpenCV etc</li>
-        </ol>
-        <h4>Project Highlight:</h4>
-        <ul>
-            <li>Performed data engineering.</li>
-            <li>Replaced layers of the encoder with pretrained weights</li>
-            <li>Optimized layers of the decoders to have small parameters, low model size and good performance.</li>
-            <li>Achieved good metrics on the segmentation task. MIoU > 75%</li>
-            <li>Implemented a streamlit interface for visualizing predictions</li>
-        </ul>
-        <p>A SAMPLE OF THE REPORT AND STREAMLIT INTERFACES ARE SHOWN BELOW. Further enquiry can be checked in the <a href="https://docs.google.com/document/d/1roWh0Jl_VcngLd_OmuGMlIP2hdXSJRbf/edit?usp=drivesdk&ouid=109569805470530100719&rtpof=true&sd=true">report [gdrive link]</a> or by contacting me</p>
-        <h4 class="text-center">Project main report</h4>
-        {table_html}
-        <img src="/static/project2_sample_interface.png" class="img-fluid" alt="Project 2 interface">
-        <h4 class="text-center">Sample predictions from the models</h4>
-        <img src="/static/project2_outputs.png" class="img-fluid" alt="Project 2 outputs">
-        """,
-        active_page='Project 2')
+# --- Admin Interface (Now protected) ---
 
-@app.route('/project3')
-def project3():
-    return render_template('index.html', 
-        page_title="ABDULSALAM BASIT ML PORTFOLIO",
-        content="""
-        <h2 class="text-center">SCIZOPHRENIA DETECTION MODEL</h2>
-        <p>The main goal of the project is to develop a schizophrenia detection model with EfficientNet.<br>
-        The data used was retrieved from schizconnect and processed using matlab dpabi/dparsf and SPI</p>
-        <p>Further enquiry can be checked in the <a href="https://docs.google.com/document/d/1-2tQln0dTxbZkHM7kayoc9dcnRcICnUD/edit?usp=drivesdk&ouid=109569805470530100719&rtpof=true&sd=true">report [gdrive link]</a> or by contacting me</p>
-        <h4>Tools Used:</h4>
-        <ol>
-            <li>SCHIZOPHRENIA</li>
-            <li>OPENCV</li>
-            <li>TENSORFLOW</li>
-            <li>PYTHON</li>
-            <li>NUMPY</li>
-            <li>SimpleITK</li>
-            <li>DLTK</li>
-            <li>MATLAB</li>
-            <li>DPABI</li>
-        </ol>
-        <h4>Project Highlight:</h4>
-        <ul>
-            <li>Performed data engineering.</li>
-            <li>PROCESSED MRI DATA</li>
-            <li>TRAINED EFFICIENTNET MODELS</li>
-        </ul>
-        <h4 class="text-center">Project Visualizations</h4>
-        <img src="/static/project3_data_collection.png" class="img-fluid" alt="Data Acquisition">
-        <p class="text-center"><small>DATA ACQUISITION</small></p>
-        <img src="/static/project3_dpabi_proessing.png" class="img-fluid" alt="DPABI Processing">
-        <p class="text-center"><small>DPABI PROCESSING</small></p>
-        <img src="/static/project3_processed_images.png" class="img-fluid" alt="Processed Images">
-        <p class="text-center"><small>PROCESSED IMAGES</small></p>
-        """,
-        active_page='Project 3')
+@app.route('/admin')
+@login_required # PROTECTION
+def admin_redirect():
+    """Redirects the main /admin path to the home project editor."""
+    return redirect(url_for('admin_edit', slug='home'))
 
-@app.route('/project4')
-def project4():
-    table_html = load_excel_data('project4 sample table.xlsx')
-    return render_template('index.html', 
-        page_title="ABDULSALAM BASIT ML PORTFOLIO",
-        content=f"""
-        <h2 class="text-center">Tiny Segmentation Network</h2>
-        <p>The key requirement of the project was to build a small model for segmenting plant leaves. The model should be small enough to be deployed on a microcontroller but also powerful enough to perform up to task.<br>
-        In the project, the model mimicked a standard unet but the approach used was utilizing a deeper model and creating different decoder networks for each class and then combining the outputs at the inference.<br>
-        The training data used for the project include leaves of maize, cassava, yam etc., all featuring different types of diseases.<br>
-        For evaluation, the model was first evaluated against other standard Unet architectures with pretrained encoders and then with other SoTA segmentation models.<br>
-        In the end, the model had a total model size of 8mb and it performed the best on the task.</p>
-        <h4>Tools Used:</h4>
-        <ol>
-            <li>VGG IMAGE ANNOTATOR</li>
-            <li>Adobe photoshop (for removing unwanted noises in the images used)</li>
-            <li>TENSORFLOW</li>
-            <li>PYTHON</li>
-            <li>NUMPY</li>
-            <li>STREAMLIT</li>
-            <li>OpenCV etc</li>
-            <li>FLUTTER</li>
-        </ol>
-        <h4>Project Highlight:</h4>
-        <ul>
-            <li>Performed data engineering.</li>
-            <li>Created a tiny segmentation model.</li>
-            <li>Achieved good metrics on the segmentation task. MIoU > 80%</li>
-            <li>Implemented a streamlit interface for visualizing predictions</li>
-            <li>Deployed The model on an android phone</li>
-        </ul>
-        <p>A SAMPLE OF THE REPORT AND OTHER MODEL VISUALIZATIONS ARE SHOWN BELOW. Further enquiry can be checked in the <a href="https://docs.google.com/document/d/1ZuVrWaqN7Jhi-rECwiz1xBuiiiA-LPCU/edit?usp=drivesdk&ouid=103980037459622424907&rtpof=true&sd=true">report [gdrive link]</a> or by contacting me</p>
-        <h4 class="text-center">Project main report</h4>
-        {table_html}
-        <h4 class="text-center">Sample predictions from the models</h4>
-        <img src="/static/project4_outputs.png" class="img-fluid" alt="Project 4 outputs">
-        <h4 class="text-center">Model visualization</h4>
-        <div class="row">
-            <div class="col-md-6">
-                <img src="/static/project4_novel_outlook.jpg" class="img-fluid" alt="Model outlook">
-                <p class="text-center"><small>model outlook</small></p>
-            </div>
-            <div class="col-md-6">
-                <img src="/static/project4_NOVEL_MODEL_ARCHITECTURE.png" class="img-fluid" alt="Model architecture">
-                <p class="text-center"><small>model arch</small></p>
-            </div>
-        </div>
-        <h4 class="text-center">Android App</h4>
-        <img src="/static/segmenterApp.jpg" class="img-fluid" alt="Android deployment">
-        <p class="text-center"><small>Android deployment</small></p>
-        """,
-        active_page='Project 4')
+@app.route('/admin/edit/<slug>', methods=['GET', 'POST'])
+@login_required # PROTECTION
+def admin_edit(slug):
+    """Allows editing of an existing project's content."""
+    data = load_portfolio_data()
+    current_project = data['projects'].get(slug)
+    message = request.args.get('message') # Get message passed from redirect/add/delete
 
-@app.route('/project5')
-def project5():
-    table_html = load_excel_data('project5 sample table.xlsx')
-    return render_template('index.html', 
-        page_title="ABDULSALAM BASIT ML PORTFOLIO",
-        content=f"""
-        <h2 class="text-center">Tiny Segmentation and Classification Network</h2>
-        <p>The goal of the project was to build a small model for segmenting and classifying plant leaves. The model should be small enough to be deployed on a microcontroller but also powerful enough to perform up to task.<br>
-        In the project, a classification model was built and then integrated with the segmentation model built in the prior project.<br>
-        In building the classification model, some concepts used were
-        <ul>
-            <li>THE USE OF WIDE NETWORKS</li>
-            <li>THE USE OF DEEP NETWORKS</li>
-            <li>THE USE OF INCEPTION MODULES</li>
-            <li>THE USE OF RESIDUAL CONNECTIONS</li>
-            <li>THE USE OF 1x1 CONVOLUTIONS</li>
-            <li>THE USE OF CNN INSTEAD OF DENSE NETWORKS</li>
-        </ul>
-        The training data used for the project include leaves of maize, cassava, yam etc., all featuring different types of diseases as in the case of the segmentation model.<br>
-        For evaluation, the classification model was evaluated against some other SoTA classification models.<br>
-        In the end, the classification model had a total model size of &lt;400kb and it performed the best on the task but second best to Densenet pretrained model.</p>
-        <h4>Tools Used:</h4>
-        <ol>
-            <li>VGG IMAGE ANNOTATOR</li>
-            <li>Adobe photoshop (for removing unwanted noises in the images used)</li>
-            <li>TENSORFLOW</li>
-            <li>PYTHON</li>
-            <li>NUMPY</li>
-            <li>STREAMLIT</li>
-            <li>OpenCV etc</li>
-            <li>FLUTTER</li>
-        </ol>
-        <h4>Project Highlight:</h4>
-        <ul>
-            <li>Performed data engineering.</li>
-            <li>Created a tiny classification model.</li>
-            <li>Achieved good metrics on the segmentation task. F1 score > 98%</li>
-            <li>Implemented a streamlit interface for visualizing predictions</li>
-            <li>Deployed The model on an android phone</li>
-        </ul>
-        <p>A SAMPLE OF THE REPORT AND OTHER MODEL VISUALIZATIONS ARE SHOWN BELOW. Further enquiry can be checked in the <a href="https://docs.google.com/document/d/1X0QJ3VesoOagpyS5ptqLvy3sjBW9Tb18/edit?usp=drivesdk&ouid=103980037459622424907&rtpof=true&sd=true">report [gdrive link]</a> or by contacting me</p>
-        <h4 class="text-center">Project main report</h4>
-        {table_html}
-        <img src="/static/project5_sample_interface.png" class="img-fluid" alt="Project 5 interface">
-        <h4 class="text-center">Model visualization</h4>
-        <div class="row">
-            <div class="col-md-6">
-                <img src="/static/project5_large.png" class="img-fluid" alt="Model large">
-                <p class="text-center"><small>model large</small></p>
-            </div>
-            <div class="col-md-6">
-                <img src="/static/project5_small.png" class="img-fluid" alt="Model small">
-                <p class="text-center"><small>model small</small></p>
-            </div>
-        </div>
-        <h4 class="text-center">Android App</h4>
-        <img src="/static/segClassApp.jpg" class="img-fluid" alt="Android deployment">
-        <p class="text-center"><small>Android deployment</small></p>
-        """,
-        active_page='Project 5')
+    if not current_project:
+        abort(404)
 
-@app.route('/project6')
-def project6():
-    return render_template('index.html', 
-        page_title="ABDULSALAM BASIT ML PORTFOLIO",
-        content="""
-        <h2 class="text-center">ARDUINO/ML AFib DETECTION</h2>
-        <p>AN ECG ACQUISITION SYSTEM. The raw ECG is taken using AD8232 sensor with Arduino at 500Hz sampling frequency and stored in an array. Peaks are obtained from the array and features extracted. The extracted features are fed into a RandomForestClassifier model already built using scikit learn and converted to C++ using micromlgen python library.<br>
-        The model was trained to detect Normal Sinus Rhythm, AFib and Other Heart diseases. The model prediction will be displayed on an LCD screen. The ecg array and extracted features will be saved on SD card and can be used on a streamlit app to display some information.<br>
-        Anticipate!!!</p>
-        """,
-        active_page='Project 6(nearing final stages)')
+    if request.method == 'POST':
+        new_title = request.form.get('project_title')
+        new_content = request.form.get('project_content')
+        new_slug = request.form.get('project_slug')
 
-@app.route('/project7')
-def project7():
-    return render_template('index.html', 
-        page_title="ABDULSALAM BASIT ML PORTFOLIO",
-        content="""
-        <h2 class="text-center">NEURAL TRANSLATION AND AUDIO GENERATION</h2>
-        <p>ANTICIPATE!!!<br>
-        It is a system that takes audio directly from a microphone, transcribes it, translate to other languages, transforms the translated texts to audio, send over bluetooth with raspberry to multiple bluetooth speakers with each speaker handling specific language.</p>
-        """,
-        active_page='Project 7(ongoing)')
+        if not new_title or not new_content or not new_slug:
+            flash("Title, Content, and Slug cannot be empty.", "danger")
+        elif new_slug != slug and new_slug in data['projects']:
+            flash(f"Slug '{new_slug}' is already in use. Please choose a different one.", "danger")
+        else:
+            # Handle slug change: delete old entry, create new one
+            if new_slug != slug:
+                del data['projects'][slug]
+                slug = new_slug
+                
+            current_project['title'] = new_title
+            current_project['content'] = new_content
+            
+            data['portfolio_title'] = request.form.get('portfolio_title', data['portfolio_title'])
+
+            data['projects'][slug] = current_project
+            save_portfolio_data(data)
+            flash(f"Content for '{new_title}' updated and saved successfully!", "success")
+            
+            # Redirect to the new slug if it changed
+            if new_slug != request.form.get('original_slug'):
+                return redirect(url_for('admin_edit', slug=new_slug))
+
+    return render_template('admin.html', 
+        data=data, 
+        current_slug=slug, 
+        current_project=current_project)
+
+@app.route('/admin/add', methods=['POST'])
+@login_required # PROTECTION
+def admin_add():
+    """Creates a new project from the admin panel."""
+    data = load_portfolio_data()
+    new_title = request.form.get('new_project_title')
+
+    if not new_title:
+        flash("Project title cannot be empty.", "danger")
+    else:
+        new_slug = generate_slug(new_title, data)
+        
+        if new_slug in data['projects']:
+            flash(f"Could not create slug for '{new_title}'. Please try a more unique title.", "danger")
+        else:
+            data['projects'][new_slug] = {
+                'title': new_title,
+                'content': f"## {new_title}\n\nThis is the content for your new project. Use **Markdown** to format your text, and use the `[TABLE:filename.xlsx]` tag to embed tables.",
+            }
+            save_portfolio_data(data)
+            flash(f"New project '{new_title}' created successfully!", "success")
+            return redirect(url_for('admin_edit', slug=new_slug))
+
+    return redirect(url_for('admin_edit', slug='home')) # Redirect to home edit on failure
+
+
+@app.route('/admin/delete/<slug>', methods=['POST'])
+@login_required # PROTECTION
+def admin_delete(slug):
+    """Deletes a project."""
+    if slug == 'home':
+        flash("Cannot delete the mandatory 'Home' project.", "danger")
+        return redirect(url_for('admin_edit', slug='home'))
+
+    data = load_portfolio_data()
+    if slug in data['projects']:
+        title = data['projects'][slug]['title']
+        del data['projects'][slug]
+        save_portfolio_data(data)
+        flash(f"Project '{title}' deleted successfully.", "success")
+        return redirect(url_for('admin_edit', slug='home'))
+    
+    flash(f"Project deletion failed: Slug '{slug}' not found.", "danger")
+    return redirect(url_for('admin_edit', slug='home'))
+
 
 if __name__ == '__main__':
+    load_portfolio_data() 
     app.run(debug=True)
