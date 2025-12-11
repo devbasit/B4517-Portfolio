@@ -1,0 +1,378 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Panel - {{ data.portfolio_title }}</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    
+    <style>
+        /* General Light Mode Defaults */
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f7f9fc;
+            min-height: 100vh;
+            color: #333;
+            transition: background-color 0.3s ease, color 0.3s ease;
+        }
+        .container-fluid {
+            max-width: 1800px;
+        }
+        .sidebar {
+            background-color: #ffffff;
+            border-right: 1px solid #e0e0e0;
+            padding: 20px;
+            transition: background-color 0.3s ease;
+        }
+        .main-content {
+            padding: 30px;
+        }
+        .card {
+            background-color: #ffffff;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.06);
+            border-radius: 0.75rem;
+            transition: background-color 0.3s ease;
+        }
+
+        /* Admin Navigation Styling */
+        .nav-link.active {
+            background-color: #007bff;
+            color: white !important;
+            font-weight: bold;
+            border-radius: 0.5rem;
+        }
+        .nav-link {
+            transition: background-color 0.2s, transform 0.2s;
+            color: #333;
+            padding: 10px;
+            margin-bottom: 5px;
+        }
+        .nav-link:hover {
+            background-color: #f0f0f0;
+            transform: translateX(3px);
+        }
+        /* Content Editor Styling */
+        textarea {
+            min-height: 400px;
+            font-family: monospace;
+            font-size: 0.95rem;
+            line-height: 1.6;
+        }
+
+        /* --- Dark Mode Overrides --- */
+        .dark-mode {
+            background-color: #1f2937; /* Dark background */
+            color: #e5e7eb; /* Light text */
+        }
+        .dark-mode .sidebar {
+            background-color: #111827; /* Darker sidebar */
+            border-right-color: #374151;
+        }
+        .dark-mode .card {
+            background-color: #2a3442; /* Dark card background */
+            box-shadow: 0 4px 6px -1px rgba(255, 255, 255, 0.1), 0 2px 4px -2px rgba(255, 255, 255, 0.06);
+        }
+        .dark-mode .nav-link {
+            color: #d1d5db;
+        }
+        .dark-mode .nav-link:hover {
+            background-color: #374151;
+        }
+        .dark-mode h1, .dark-mode h4, .dark-mode h5, .dark-mode label {
+            color: #000000;
+        }
+        .dark-mode input, .dark-mode textarea {
+            background-color: #1f2937;
+            border-color: #4b5563;
+            color: #f3f4f6;
+        }
+        .dark-mode .form-text {
+            color: #5f92e8 !important;
+        }
+        .dark-mode .alert-success {
+            background-color: #10b981;
+            color: white;
+            border-color: #059669;
+        }
+        .dark-mode .alert-danger {
+            background-color: #ef4444;
+            color: white;
+            border-color: #dc2626;
+        }
+    </style>
+</head>
+<body class="{% if session.get('theme') == 'dark' %}dark-mode{% endif %}">
+    <div class="container-fluid">
+        <div class="row min-h-screen">
+            <!-- Sidebar for Navigation and Project Management -->
+            <div class="col-lg-3 col-md-4 sidebar">
+                <div class="d-flex justify-content-between align-items-center mb-4">
+                    <h4 class="text-2xl font-bold text-gray-800">Portfolio CMS</h4>
+                    <!-- Dark Mode Toggle -->
+                    <button id="theme-toggle" class="btn btn-outline-secondary">
+                        <i class="fas fa-moon" id="moon-icon"></i>
+                        <i class="fas fa-sun" id="sun-icon" style="display: none;"></i>
+                    </button>
+                </div>
+                
+                <!-- Add New Project Form -->
+                <div class="card p-3 mb-4 bg-light">
+                    <h5 class="text-lg font-medium mb-3 text-gray-700">Add New Project</h5>
+                    <form method="POST" action="{{ url_for('admin_add') }}">
+                        <div class="input-group mb-2">
+                            <input type="text" class="form-control rounded-l-md" placeholder="New Project Title" name="new_project_title" required>
+                            <input type="number" name="new_project_rank" class="form-control ms-2" placeholder="Rank (0 = top)" min="0" style="max-width:140px;">
+                            <button type="submit" class="btn btn-primary rounded-r-md ms-2">
+                                <i class="fas fa-plus"></i> Add
+                            </button>
+                        </div>
+                    </form>
+                </div>
+
+                <!-- Existing Project List -->
+                <h5 class="text-lg font-medium mb-3 mt-4 text-gray-600">Edit Existing Pages:</h5>
+                <nav class="nav flex-column space-y-2">
+                    {% for slug, project in data.projects.items()|sort %}
+                    <a class="nav-link text-gray-700 p-2 rounded-lg {% if current_slug == slug %}active{% endif %}" href="{{ url_for('admin_edit', slug=slug) }}">
+                        {{ project.title }}
+                        {% if slug != 'home' %}
+                            <i class="fas fa-times-circle text-danger ms-2 float-end" 
+                                data-bs-toggle="modal" data-bs-target="#deleteModal" 
+                                data-slug="{{ slug }}" data-title="{{ project.title }}"></i>
+                        {% endif %}
+                    </a>
+                    {% endfor %}
+                </nav>
+
+                <div class="mt-8 pt-4 border-t border-gray-200">
+                    <a href="{{ url_for('home') }}" class="btn btn-outline-success w-full shadow-sm mb-2">
+                        &#8592; View Live Portfolio
+                    </a>
+                    <a href="{{ url_for('logout') }}" class="btn btn-danger w-full shadow-sm">
+                        <i class="fas fa-sign-out-alt me-2"></i> Log Out
+                    </a>
+                </div>
+            </div>
+
+            <!-- Main Content Editor -->
+            <div class="col-lg-9 col-md-8 main-content">
+                <h1 class="text-3xl font-bold mb-6 text-gray-900">Editing: {{ current_project.title }}</h1>
+
+                <!-- Reorder Projects Card -->
+                <div class="card p-4 mb-4">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <h5 class="mb-0">Reorder Projects</h5>
+                        <div>
+                            <button id="save-order-btn" class="btn btn-sm btn-primary">Save Order</button>
+                        </div>
+                    </div>
+                    <p class="text-muted small">Drag the items to reorder featured/other positions. Click "Save Order" to persist ranks.</p>
+                    <ul id="reorder-list" class="list-group">
+                        {% for item in ordered_projects %}
+                        <li class="list-group-item d-flex justify-content-between align-items-center {% if item.slug == 'home' %}bg-light text-muted{% endif %}" data-slug="{{ item.slug }}" {% if item.slug == 'home' %}draggable="false"{% endif %}>
+                            <span>
+                                {% if item.slug == 'home' %}
+                                    {{ '🏠' }} <strong class="ms-2">{{ item.project.title }}</strong>
+                                {% else %}
+                                    <i class="fas fa-grip-lines me-3 drag-handle" style="cursor:grab"></i> {{ item.project.title }}
+                                {% endif %}
+                            </span>
+                            <span class="badge bg-secondary">{{ item.project.rank if item.project.rank is not none else '-' }}</span>
+                        </li>
+                        {% endfor %}
+                    </ul>
+                </div>
+                
+                <!-- Display Flash Messages (Success/Danger) -->
+                {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    {% for category, message in messages %}
+                    <div class="alert alert-{{ 'danger' if category == 'danger' else 'success' }} alert-dismissible fade show" role="alert">
+                        {{ message }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                    </div>
+                    {% endfor %}
+                {% endif %}
+                {% endwith %}
+
+                <div class="card p-5 bg-white">
+                    <form method="POST" action="{{ url_for('admin_edit', slug=current_slug) }}">
+                        <!-- Hidden field to check for slug changes -->
+                        <input type="hidden" name="original_slug" value="{{ current_slug }}">
+
+                        <!-- Global Title -->
+                        <div class="mb-4">
+                            <label for="portfolio_title" class="form-label text-gray-700 font-bold">Global Portfolio Title</label>
+                            <input type="text" class="form-control rounded-md shadow-sm" id="portfolio_title" name="portfolio_title" value="{{ data.portfolio_title }}" required>
+                            <div class="form-text">This title appears at the top of every page.</div>
+                        </div>
+
+                        <!-- Project Title -->
+                        <div class="mb-4">
+                            <label for="project_title" class="form-label text-gray-700 font-bold">Project Display Title</label>
+                            <input type="text" class="form-control rounded-md shadow-sm" id="project_title" name="project_title" value="{{ current_project.title }}" required>
+                            <div class="form-text">This is the name shown in the sidebar.</div>
+                        </div>
+
+                        <!-- Project Slug (URL) -->
+                        <div class="mb-4">
+                            <label for="project_slug" class="form-label text-gray-700 font-bold">Project URL Slug (e.g., `/project/<span class="text-info">{{ current_slug }}</span>`)</label>
+                            <input type="text" class="form-control rounded-md shadow-sm" id="project_slug" name="project_slug" value="{{ current_slug }}" {% if current_slug == 'home' %}readonly{% endif %} required>
+                            {% if current_slug == 'home' %}
+                                <div class="form-text text-danger">The 'home' slug cannot be changed.</div>
+                            {% else %}
+                                <div class="form-text">Changing this updates the public URL for this project. Use hyphens (`-`) for spaces.</div>
+                            {% endif %}
+                        </div>
+
+                        <!-- Project Rank -->
+                        <div class="mb-4">
+                            <label for="project_rank" class="form-label text-gray-700 font-bold">Project Rank</label>
+                            <input type="number" class="form-control rounded-md shadow-sm" id="project_rank" name="project_rank" value="{{ current_project.rank if current_project.rank is not none else 9999 }}" min="0">
+                            <div class="form-text">Lower numbers appear higher in the Featured list. Use 0 for the topmost featured item.</div>
+                        </div>
+
+                        <!-- Main Content (Markdown) -->
+                        <div class="mb-4">
+                            <label for="project_content" class="form-label text-gray-700 font-bold">Main Project Content (Markdown)</label>
+                            <textarea class="form-control rounded-md shadow-sm" id="project_content" name="project_content" required>{{ current_project.content }}</textarea>
+                            <div class="form-text">
+                                Use **Markdown** to format your content (e.g., `## Heading`, `* list item`, `**bold**`).<br>
+                                **To embed a table**, use the tag: **`[TABLE:your-excel-file.xlsx]`**
+                                (File must be in the same folder as `app.py`).<br>
+                                **To embed an image**, use: `![Alt Text](/static/image-name.png)`
+                            </div>
+                        </div>
+
+                        <button type="submit" class="btn btn-success btn-lg shadow-lg hover:shadow-xl transition duration-300">
+                            <i class="fas fa-save me-2"></i> Save Changes to '{{ current_project.title }}'
+                        </button>
+                        <a href="{{ url_for('dynamic_project_route', slug=current_slug) if current_slug != 'home' else url_for('home') }}" target="_blank" class="btn btn-outline-info btn-lg ms-3">
+                            <i class="fas fa-external-link-alt me-2"></i> Preview Page
+                        </a>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Delete Confirmation Modal -->
+    <div class="modal fade" id="deleteModal" tabindex="-1" aria-labelledby="deleteModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="deleteModalLabel">Confirm Deletion</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    Are you sure you want to permanently delete the project: <strong id="delete-project-title"></strong>?
+                    This action cannot be undone.
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <form id="delete-form" method="POST">
+                        <button type="submit" class="btn btn-danger">Delete Project</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <!-- SortableJS for drag-and-drop ordering -->
+    <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
+    <script>
+        // Modal script to set project title and form action dynamically
+        document.addEventListener('DOMContentLoaded', () => {
+            // Initialize Sortable on the reorder list
+            const reorderList = document.getElementById('reorder-list');
+            if (reorderList) {
+                new Sortable(reorderList, {
+                    animation: 150,
+                    handle: '.drag-handle',
+                });
+
+                const saveBtn = document.getElementById('save-order-btn');
+                if (saveBtn) {
+                    saveBtn.addEventListener('click', async (e) => {
+                        e.preventDefault();
+                        const items = Array.from(reorderList.querySelectorAll('li'));
+                        const order = items.map(li => li.getAttribute('data-slug'));
+
+                        try {
+                            const res = await fetch("{{ url_for('admin_reorder') }}", {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ order }),
+                                credentials: 'same-origin'
+                            });
+                            if (res.redirected) {
+                                window.location = res.url;
+                                return;
+                            }
+                            // fallback: reload page
+                            window.location.reload();
+                        } catch (err) {
+                            console.error('Reorder failed', err);
+                            window.location.reload();
+                        }
+                    });
+                }
+            }
+            const deleteModal = document.getElementById('deleteModal');
+            deleteModal.addEventListener('show.bs.modal', function (event) {
+                const button = event.relatedTarget;
+                const slug = button.getAttribute('data-slug');
+                const title = button.getAttribute('data-title');
+                
+                const modalTitle = deleteModal.querySelector('#delete-project-title');
+                const deleteForm = deleteModal.querySelector('#delete-form');
+                
+                modalTitle.textContent = title;
+                // Set the form action to the dynamic delete route
+                deleteForm.action = "{{ url_for('admin_delete', slug='SLUG_PLACEHOLDER') }}".replace('SLUG_PLACEHOLDER', slug);
+            });
+            
+            // --- Dark Mode Logic ---
+            const themeToggle = document.getElementById('theme-toggle');
+            const body = document.body;
+            const moonIcon = document.getElementById('moon-icon');
+            const sunIcon = document.getElementById('sun-icon');
+
+            // Check for saved theme preference in localStorage
+            const isDarkMode = localStorage.getItem('adminTheme') === 'dark';
+
+            // Apply saved theme on load
+            if (isDarkMode) {
+                body.classList.add('dark-mode');
+                moonIcon.style.display = 'none';
+                sunIcon.style.display = 'inline';
+            } else {
+                body.classList.remove('dark-mode');
+                moonIcon.style.display = 'inline';
+                sunIcon.style.display = 'none';
+            }
+
+            // Event listener for theme toggle button
+            themeToggle.addEventListener('click', () => {
+                body.classList.toggle('dark-mode');
+                const dark = body.classList.contains('dark-mode');
+                
+                // Update icons
+                if (dark) {
+                    moonIcon.style.display = 'none';
+                    sunIcon.style.display = 'inline';
+                } else {
+                    moonIcon.style.display = 'inline';
+                    sunIcon.style.display = 'none';
+                }
+
+                // Save preference to localStorage
+                localStorage.setItem('adminTheme', dark ? 'dark' : 'light');
+            });
+        });
+    </script>
+</body>
+</html>
