@@ -61,6 +61,14 @@
             box-shadow: 0 4px 6px rgba(0, 123, 255, 0.3);
         }
 
+        /* Sidebar Headings Styling for Dark Mode */
+        .sidebar h5, .sidebar h6 {
+            color: #6c757d; /* Bootstrap text-muted default */
+        }
+        .dark-mode .sidebar h5, .dark-mode .sidebar h6 {
+            color: #adb5bd; /* Lighter muted color for dark mode */
+        }
+
         /* Main Content Styling */
         .content-area {
             padding: 30px;
@@ -102,6 +110,94 @@
         .dark-mode .content-table thead {
             background-color: #555;
             color: white;
+        }
+
+        /* Markdown Content Styling */
+        .content-area .card h1,
+        .content-area .card h2,
+        .content-area .card h3,
+        .content-area .card h4,
+        .content-area .card h5,
+        .content-area .card h6 {
+            color: #007bff;
+            margin-top: 1.5rem;
+            margin-bottom: 1rem;
+            font-weight: 600;
+        }
+        .dark-mode .content-area .card h1,
+        .dark-mode .content-area .card h2,
+        .dark-mode .content-area .card h3,
+        .dark-mode .content-area .card h4,
+        .dark-mode .content-area .card h5,
+        .dark-mode .content-area .card h6 {
+            color: #5fa8ff;
+        }
+        .content-area .card p {
+            line-height: 1.7;
+            margin-bottom: 1rem;
+        }
+        .content-area .card ul,
+        .content-area .card ol {
+            margin-bottom: 1rem;
+            padding-left: 1.5rem;
+        }
+        .content-area .card li {
+            margin-bottom: 0.5rem;
+        }
+        .content-area .card blockquote {
+            border-left: 4px solid #007bff;
+            padding-left: 1rem;
+            margin: 1.5rem 0;
+            font-style: italic;
+            color: #666;
+        }
+        .dark-mode .content-area .card blockquote {
+            border-left-color: #5fa8ff;
+            color: #ccc;
+        }
+        .content-area .card code {
+            background-color: #f8f9fa;
+            padding: 0.2rem 0.4rem;
+            border-radius: 0.25rem;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9em;
+        }
+        .dark-mode .content-area .card code {
+            background-color: #2c2c2c;
+            color: #e9ecef;
+        }
+        .content-area .card pre {
+            background-color: #f8f9fa;
+            padding: 1rem;
+            border-radius: 0.5rem;
+            overflow-x: auto;
+            margin-bottom: 1rem;
+        }
+        .dark-mode .content-area .card pre {
+            background-color: #2c2c2c;
+            color: #e9ecef;
+        }
+        .content-area .card pre code {
+            background: none;
+            padding: 0;
+        }
+        .content-area .card a {
+            color: #007bff;
+            text-decoration: none;
+        }
+        .content-area .card a:hover {
+            text-decoration: underline;
+        }
+        .dark-mode .content-area .card a {
+            color: #5fa8ff;
+        }
+        .content-area .card hr {
+            border: 0;
+            border-top: 1px solid #dee2e6;
+            margin: 2rem 0;
+        }
+        .dark-mode .content-area .card hr {
+            border-top-color: #444;
         }
         
         /* Dark Mode Switch */
