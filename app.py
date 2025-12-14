@@ -11,6 +11,7 @@ app = Flask(__name__)
 # --- Flask Secret Key Configuration ---
 # IMPORTANT: In a real environment, this should be a long, random value 
 # and stored securely, not hardcoded. This is for demonstration only.
+#let's see if cv worrk
 app.config['SECRET_KEY'] = os.getenv('SECRET_KEY')
 app.config['SESSION_COOKIE_SECURE'] = True  # Recommend using HTTPS in production
 app.config['SESSION_COOKIE_HTTPONLY'] = True

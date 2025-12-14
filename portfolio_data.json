@@ -3,7 +3,7 @@
     "projects": {
         "home": {
             "title": "Home",
-            "content": "## My public ML portfolio\r\n\r\nThis portfolio contains descriptions of some selected projects, majorly computer vision projects on different areas including classification and segmentation.\r\n\r\n### Contact\r\n\r\n* Email: <a href=\"mailto:basitsalam2001@gmail.com\">Mail</a>\r\n* Phone: <a href=\"tel:+2347050837042\">+2347050837042</a>\r\n\r\nA copy of my CV can be accessed at [CV [gdrive link]](https://docs.google.com/document/d/1be7xFPlghcJmMR5uscTFjGsgTO6-YTD5dBZnNT8jlhM/edit?usp=sharing)\r\n\r\n<img src='/static/how-to-build-a-machine-learning-portfolio.jpeg' alt='Portfolio Image' style='max-width:100%' />",
+            "content": "## My public ML portfolio\r\n\r\nThis portfolio contains descriptions of some selected projects, majorly computer vision projects on different areas including classification and segmentation.\r\n\r\n### Contact\r\n\r\n* Email: <a href=\"mailto:basitsalam2001@gmail.com\">Mail</a>\r\n* Phone: <a href=\"tel:+2347050837042\">+2347050837042</a>\r\n\r\nA copy of my CV can be accessed <a href=\"/static/cv.pdf\" target=\"_blank\">here</a>\r\n\r\n<img src='/static/how-to-build-a-machine-learning-portfolio.jpeg' alt='Portfolio Image' style='max-width:100%' />",
             "table_filename": "",
             "rank": 0
         },
